@@ -1,5 +1,7 @@
 <?php
 
+use ICal\ICal;
+
 class Calendar extends Page {
 
 	private static $db = array(
@@ -55,11 +57,11 @@ class Calendar extends Page {
 	private static $caching_enabled = false;
 
 	protected $eventClass_cache,
-			  $announcementClass_cache,
-			  $datetimeClass_cache,
-			  $dateToEventRelation_cache,
-			  $announcementToCalendarRelation_cache,
-			  $EventList_cache;
+		$announcementClass_cache,
+		$datetimeClass_cache,
+		$dateToEventRelation_cache,
+		$announcementToCalendarRelation_cache,
+		$EventList_cache;
 
 	public static function set_jquery_included($bool = true) {
 		self::$jquery_included = $bool;
@@ -95,11 +97,11 @@ class Calendar extends Page {
 			// Announcements
 			$announcements = _t('Calendar.Announcements','Announcements');
 			$f->addFieldToTab("Root.$announcements", $announcementsField = GridField::create(
-					"Announcements",
-					$announcements,
-					$self->Announcements(),
-					GridFieldConfig_RecordEditor::create()
-				));
+				"Announcements",
+				$announcements,
+				$self->Announcements(),
+				GridFieldConfig_RecordEditor::create()
+			));
 			$announcementsField->setDescription(_t('Calendar.ANNOUNCEMENTDESCRIPTION','Announcements are simple entries you can add to your calendar that do not have detail pages, e.g. "Office closed"'));
 
 			// Feeds
@@ -345,7 +347,6 @@ class Calendar extends Page {
 		return $e;
 	}
 
-
 	public function getFeedEvents($start_date, $end_date) {
 
 		$start = new DateTime($start_date);
@@ -361,20 +362,21 @@ class Calendar extends Page {
 			$feedreader = new ICal( $feed->URL );
 			$events = $feedreader->events();
 			foreach ( $events as $event ) {
+
 				// translate iCal schema into CalendarAnnouncement schema (datetime + title/content)
 				$feedevent = new CalendarAnnouncement;
 				//pass ICS feed ID to event list
 				$feedevent->ID = 'ICS_'.$feed->ID;
 				$feedevent->Feed = true;
 				$feedevent->CalendarID = $this->ID;
-				$feedevent->Title = stripslashes(ucfirst($event['SUMMARY']));
+				$feedevent->Title = stripslashes(ucfirst($event->summary));
 
-				if ( isset($event['DESCRIPTION']) && $event['DESCRIPTION']!='\n' ) {
-					$feedevent->Content = $event['DESCRIPTION'];
+				if ( isset($event->description) && $event->description!='\n' ) {
+					$feedevent->Content = $event->description;
 				}
 
-				$startdatetime = $this->iCalDateToDateTime($event['DTSTART']);//->setTimezone(new DateTimeZone($this->stat('timezone')));
-				$enddatetime = $this->iCalDateToDateTime($event['DTEND']);//->setTimezone(new DateTimeZone($this->stat('timezone')));
+				$startdatetime = $this->iCalDateToDateTime($event->dtstart);//->setTimezone(new DateTimeZone($this->stat('timezone')));
+				$enddatetime = $this->iCalDateToDateTime($event->dtend);//->setTimezone(new DateTimeZone($this->stat('timezone')));
 
 				if ( ($startdatetime < $start && $enddatetime < $start)
 					|| $startdatetime > $end && $enddatetime > $end) {
@@ -546,7 +548,7 @@ class Calendar_Controller extends Page_Controller {
 	}
 
 	public function setWeekendView() {
- 		$this->view = "weekend";
+		$this->view = "weekend";
 		$start = sfDate::getInstance();
 		if($start->format('w') == sfTime::SATURDAY) {
 			$start->yesterday();
@@ -587,7 +589,7 @@ class Calendar_Controller extends Page_Controller {
 		switch($this->DefaultView) {
 			case "month":
 				return $this->redirect($this->Link('show/month'));
-			break;
+				break;
 
 			case "week":
 				$this->setWeekView();
@@ -601,7 +603,7 @@ class Calendar_Controller extends Page_Controller {
 					$this->setMonthView();
 					return array();
 				}
-			break;
+				break;
 
 			case "today":
 				// prevent pagination on these default views
@@ -615,13 +617,12 @@ class Calendar_Controller extends Page_Controller {
 					$this->setWeekView();
 					return array();
 				}
-			break;
+				break;
 
 			default:
 				$this->setDefaultView();
-				$list = $this->Events();
 				return $this->respond();
-			break;
+				break;
 
 
 		}
@@ -681,6 +682,10 @@ class Calendar_Controller extends Page_Controller {
 
 	public function monthjson(SS_HTTPRequest $r) {
 		if(!$r->param('ID')) return false;
+
+		//Increase the per page limit to 500 as the AJAX request won't look for further pages
+		$this->EventsPerPage = 500;
+
 		$this->startDate = sfDate::getInstance(CalendarUtil::get_date_from_string($r->param('ID')));
 		$this->endDate = sfDate::getInstance($this->startDate)->finalDayOfMonth();
 
@@ -722,8 +727,8 @@ class Calendar_Controller extends Page_Controller {
 		$id = $r->param('ID');
 		$oid = $r->param('OtherID');
 
-		if(stristr($id, "feed") !== false) {
-			$id = str_replace("feed","",$id);
+		if(stristr($id, "ICS_") !== false) {
+			$id = str_replace("ICS_","",$id);
 			$feed = true;
 		}
 		else if(stristr($id, "announcement-") !== false) {
@@ -736,6 +741,10 @@ class Calendar_Controller extends Page_Controller {
 		if(is_numeric($id) && $oid) {
 			if(!$feed) {
 				$event = DataObject::get_by_id($announcement ? $this->data()->getDateTimeClass() : $this->data()->getEventClass(), $id);
+				// return if not found
+				if (!$event) {
+					return $this->httpError(404);
+				}
 				$FILENAME = $announcement ? preg_replace("/[^a-zA-Z0-9s]/", "", $event->Title) : $event->URLSegment;
 			}
 			else {
@@ -757,18 +766,25 @@ class Calendar_Controller extends Page_Controller {
 				$URL = "";
 			}
 			$TITLE = $feed ? $_REQUEST['title'] : $event->Title;
-			$CONTENT = $feed ? $_REQUEST['content'] : $event->Content;
-			$LOCATION = $feed ? $_REQUEST['location'] : $event->Location;
+
+			if($feed) {
+				$CONTENT = isset($_REQUEST['content']) ? $_REQUEST['content'] : '';
+				$LOCATION = isset($_REQUEST['location']) ? $_REQUEST['location'] : '';
+			} else {
+				$CONTENT = $event->obj('Content')->Summary();
+				$LOCATION = $event->Location;
+			}
+
 			$this->getResponse()->addHeader('Cache-Control','private');
 			$this->getResponse()->addHeader('Content-Description','File Transfer');
 			$this->getResponse()->addHeader('Content-Type','text/calendar');
 			$this->getResponse()->addHeader('Content-Transfer-Encoding','binary');
 			if(stristr($_SERVER['HTTP_USER_AGENT'], "MSIE")) {
- 				$this->getResponse()->addHeader("Content-disposition","filename=".$FILENAME."; attachment;");
- 			}
- 			else {
- 				$this->getResponse()->addHeader("Content-disposition","attachment; filename=".$FILENAME);
- 			}
+				$this->getResponse()->addHeader("Content-disposition","filename=".$FILENAME."; attachment;");
+			}
+			else {
+				$this->getResponse()->addHeader("Content-disposition","attachment; filename=".$FILENAME);
+			}
 			$result = trim(strip_tags($this->customise(array(
 				'HOST' => $HOST,
 				'LANGUAGE' => $LANGUAGE,
@@ -799,24 +815,24 @@ class Calendar_Controller extends Page_Controller {
 			$d = clone $this->startDate;
 			switch(strlen(str_replace("-","",$r->param('ID')))) {
 				case 8:
-				$this->view = "day";
-				$this->endDate = sfDate::getInstance($d->get()+1);
-				break;
+					$this->view = "day";
+					$this->endDate = sfDate::getInstance($d->get()+1);
+					break;
 
 				case 6:
-				$this->view = "month";
-				$this->endDate = sfDate::getInstance($d->finalDayOfMonth()->date());
-				break;
+					$this->view = "month";
+					$this->endDate = sfDate::getInstance($d->finalDayOfMonth()->date());
+					break;
 
 				case 4:
-				$this->view = "year";
-				$this->endDate = sfDate::getInstance($d->finalDayOfYear()->date());
-				break;
+					$this->view = "year";
+					$this->endDate = sfDate::getInstance($d->finalDayOfYear()->date());
+					break;
 
 				default:
-				$this->view = "default";
-				$this->endDate = sfDate::getInstance($d->addMonth($this->DefaultFutureMonths)->date());
-				break;
+					$this->view = "default";
+					$this->endDate = sfDate::getInstance($d->addMonth($this->DefaultFutureMonths)->date());
+					break;
 			}
 		}
 	}
@@ -854,26 +870,26 @@ class Calendar_Controller extends Page_Controller {
 		switch($this->view) {
 			case "day":
 				return CalendarUtil::localize($this->startDate->get(), null, CalendarUtil::ONE_DAY_HEADER);
-			break;
+				break;
 
 			case "month":
 				return CalendarUtil::localize($this->startDate->get(), null, CalendarUtil::MONTH_HEADER);
-			break;
+				break;
 
 			case "year":
 				return CalendarUtil::localize($this->startDate->get(), null, CalendarUtil::YEAR_HEADER);
-			break;
+				break;
 
 			case "range":
 			case "week":
 			case "weekend":
 				list($strStartDate,$strEndDate) = CalendarUtil::get_date_string($this->startDate->date(),$this->endDate->date());
 				return $strStartDate.$strEndDate;
-			break;
+				break;
 
 			default:
 				return $this->DefaultDateHeader;
-			break;
+				break;
 		}
 	}
 

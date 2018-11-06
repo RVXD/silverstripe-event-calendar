@@ -192,27 +192,55 @@ class CalendarDateTime extends DataObject {
 		$start = sfDate::getInstance($this->StartDate);
 		$end = sfDate::getInstance($this->EndDate);
 		$dates = array ();
-		while($start->get() <= $end->get()) {
+		do {
 			$dates[] = $start->format('Y-m-d');
 			$start->tomorrow();
-		}
+		} while($start->get() <= $end->get());
 		return $dates;
 	}
 	
 	public function canCreate($member = null) {
-		return Permission::check("CMS_ACCESS_CMSMain");
+		if (!$member) {
+			$member = Member::currentUser();
+		}
+		$extended = $this->extendedCan(__FUNCTION__, $member);
+		if($extended !== null) {
+			return $extended;
+		}
+		return Permission::check('CMS_ACCESS_CMSMain', 'any', $member);
 	}
 
 	public function canEdit($member = null) {
-		return Permission::check("CMS_ACCESS_CMSMain");
+		if (!$member) {
+			$member = Member::currentUser();
+		}
+		$extended = $this->extendedCan(__FUNCTION__, $member);
+		if($extended !== null) {
+			return $extended;
+		}
+		return Permission::check('CMS_ACCESS_CMSMain', 'any', $member);
 	}
 
 	public function canDelete($member = null) {
-		return Permission::check("CMS_ACCESS_CMSMain");
+		if (!$member) {
+			$member = Member::currentUser();
+		}
+		$extended = $this->extendedCan(__FUNCTION__, $member);
+		if($extended !== null) {
+			return $extended;
+		}
+		return Permission::check('CMS_ACCESS_CMSMain', 'any', $member);
 	}
 
 	public function canView($member = null) {
-		return Permission::check("CMS_ACCESS_CMSMain");
+		if (!$member) {
+			$member = Member::currentUser();
+		}
+		$extended = $this->extendedCan(__FUNCTION__, $member);
+		if($extended !== null) {
+			return $extended;
+		}
+		return Permission::check('CMS_ACCESS_CMSMain', 'any', $member);
 	}
 
 }
