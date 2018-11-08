@@ -1,7 +1,5 @@
 <?php
 
-use ICal\ICal;
-
 class Calendar extends Page {
 
 	private static $db = array(
@@ -359,24 +357,23 @@ class Calendar extends Page {
 		$feeds = $this->Feeds();
 		$feedevents = new ArrayList();
 		foreach( $feeds as $feed ) {
-			$feedreader = new ICal( $feed->URL );
+			$feedreader = new \ICal( $feed->URL );
 			$events = $feedreader->events();
 			foreach ( $events as $event ) {
-
 				// translate iCal schema into CalendarAnnouncement schema (datetime + title/content)
 				$feedevent = new CalendarAnnouncement;
 				//pass ICS feed ID to event list
 				$feedevent->ID = 'ICS_'.$feed->ID;
 				$feedevent->Feed = true;
 				$feedevent->CalendarID = $this->ID;
-				$feedevent->Title = stripslashes(ucfirst($event->summary));
+				$feedevent->Title = stripslashes(ucfirst($event['SUMMARY']));
 
-				if ( isset($event->description) && $event->description!='\n' ) {
-					$feedevent->Content = $event->description;
+				if ( isset($event['DESCRIPTION']) && $event['DESCRIPTION']!='\n' ) {
+					$feedevent->Content = $event['DESCRIPTION'];
 				}
 
-				$startdatetime = $this->iCalDateToDateTime($event->dtstart);//->setTimezone(new DateTimeZone($this->stat('timezone')));
-				$enddatetime = $this->iCalDateToDateTime($event->dtend);//->setTimezone(new DateTimeZone($this->stat('timezone')));
+				$startdatetime = $this->iCalDateToDateTime($event['DTSTART']);//->setTimezone(new DateTimeZone($this->stat('timezone')));
+				$enddatetime = $this->iCalDateToDateTime($event['DTEND']);//->setTimezone(new DateTimeZone($this->stat('timezone')));
 
 				if ( ($startdatetime < $start && $enddatetime < $start)
 					|| $startdatetime > $end && $enddatetime > $end) {
