@@ -357,7 +357,19 @@ class Calendar extends Page {
 		$feeds = $this->Feeds();
 		$feedevents = new ArrayList();
 		foreach( $feeds as $feed ) {
-			$feedreader = new \ICal( $feed->URL );
+            
+            // temp fix, skip @file command
+            $curl_handle=curl_init();
+            curl_setopt($curl_handle, CURLOPT_URL,$feed->URL);
+            curl_setopt($curl_handle, CURLOPT_CONNECTTIMEOUT, 2);
+            curl_setopt($curl_handle, CURLOPT_RETURNTRANSFER, 1);
+            curl_setopt($curl_handle, CURLOPT_USERAGENT, 'website');
+            $result = curl_exec($curl_handle);
+            curl_close($curl_handle);
+            $lines = preg_split('/\r\n|\n|\r/', trim($result));
+            $feedreader = new \ICal( $lines );
+            
+//			$feedreader = new \ICal( $feed->URL );
 			$events = $feedreader->events();
 			foreach ( $events as $event ) {
 				// translate iCal schema into CalendarAnnouncement schema (datetime + title/content)
