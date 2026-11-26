@@ -55,13 +55,13 @@ class CalendarWidget extends ViewableData
 		if (!Calendar::config()->jquery_included) {
 			Requirements::javascript('silverstripe/admin:thirdparty/jquery/jquery.min.js');
 		}
-		Requirements::javascript("unclecheese/silverstripe-event-calendar:client/dist/js/calendar_widget.js");
+		Requirements::javascript("unclecheese/event-calendar:client/dist/js/calendar_widget.js");
 
-		$localeFile = _t(__CLASS__.'.DATEJSFILE', 'unclecheese/silverstripe-event-calendar:client/dist/js/lang/calendar_en.js');
+		$localeFile = _t(__CLASS__.'.DATEJSFILE', 'unclecheese/event-calendar:client/dist/js/lang/calendar_en.js');
 		Requirements::javascript($localeFile);
 
-		Requirements::javascript("unclecheese/silverstripe-event-calendar:client/dist/js/calendar_widget_init.js");
-		Requirements::css("unclecheese/silverstripe-event-calendar:client/dist/css/calendar_widget.css");
+		Requirements::javascript("unclecheese/event-calendar:client/dist/js/calendar_widget_init.js");
+		Requirements::css("unclecheese/event-calendar:client/dist/css/calendar_widget.css");
 		
 		return '<div class="calendar-widget" ' . $this->getDataAttributes() . '></div>';
 	}

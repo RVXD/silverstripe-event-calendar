@@ -75,7 +75,7 @@ class Calendar extends Page
 		'DefaultView'			=> 'upcoming'
 	];
 
-	private static $icon = "unclecheese/silverstripe-event-calendar:client/dist/images/calendar-file.gif";
+	private static $icon = "unclecheese/event-calendar:client/dist/images/calendar-file.gif";
 
 	private static $description = "A collection of calendar events";
 
@@ -163,7 +163,7 @@ class Calendar extends Page
 
 		$this->beforeUpdateCMSFields(function($f) use ($self) {
 
-			Requirements::javascript('unclecheese/silverstripe-event-calendar:client/dist/js/calendar_cms.js');
+			Requirements::javascript('unclecheese/event-calendar:client/dist/js/calendar_cms.js');
 
 			$configuration = _t(__CLASS__.'.CONFIGURATION','Configuration');
 			$f->addFieldsToTab(
